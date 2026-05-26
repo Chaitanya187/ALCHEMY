@@ -2,7 +2,7 @@
 set -euxo pipefail
 
 dnf update -y
-dnf install -y git docker
+dnf install -y git docker perl
 systemctl enable --now docker
 
 if [ ! -f /swapfile ]; then
@@ -15,14 +15,16 @@ fi
 
 mkdir -p /opt/edu-retain
 if [ ! -d /opt/edu-retain/.git ]; then
+  rm -rf /opt/edu-retain
   git clone https://github.com/RishiNarayan1/EduRetain.git /opt/edu-retain
 fi
 
 cd /opt/edu-retain
-git pull --ff-only
+git fetch origin master
+git reset --hard origin/master
 
-perl -0pi -e "s/(const MONGODB_URI = .*?;\n)/\1\nif (process.env.NODE_ENV === '\''production'\'') {\n    app.set('\''trust proxy'\'', 1);\n}\n/s" backend/server.cjs
-perl -0pi -e "s/secure: process\.env\.NODE_ENV === '\''production'\'',/secure: process.env.SESSION_COOKIE_SECURE === '\''true'\'' || (\n            process.env.NODE_ENV === '\''production'\'' \&\& process.env.SESSION_COOKIE_SECURE !== '\''false'\''\n        ),/" backend/server.cjs
+perl -0pi -e 's/(const MONGODB_URI = .*?;\n)/$1\nif (process.env.NODE_ENV === "production") {\n    app.set("trust proxy", 1);\n}\n/s' backend/server.cjs
+perl -0pi -e 's/secure: process\.env\.NODE_ENV === .production.,/secure: process.env.SESSION_COOKIE_SECURE === "true" || (\n            process.env.NODE_ENV === "production" \&\& process.env.SESSION_COOKIE_SECURE !== "false"\n        ),/' backend/server.cjs
 
 cat > Dockerfile <<'DOCKERFILE'
 FROM node:22-alpine AS build
