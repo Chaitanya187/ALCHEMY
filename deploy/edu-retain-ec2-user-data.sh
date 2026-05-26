@@ -5,6 +5,14 @@ dnf update -y
 dnf install -y git docker
 systemctl enable --now docker
 
+if [ ! -f /swapfile ]; then
+  fallocate -l 2G /swapfile
+  chmod 600 /swapfile
+  mkswap /swapfile
+  swapon /swapfile
+  echo '/swapfile none swap sw 0 0' >> /etc/fstab
+fi
+
 mkdir -p /opt/edu-retain
 if [ ! -d /opt/edu-retain/.git ]; then
   git clone https://github.com/RishiNarayan1/EduRetain.git /opt/edu-retain
@@ -57,7 +65,7 @@ docker run -d \
   --network edu-retain-net \
   --restart unless-stopped \
   -v edu-retain-mongo:/data/db \
-  mongo:7
+  mongo:7 --wiredTigerCacheSizeGB 0.25
 
 until docker exec edu-retain-mongo mongosh --quiet --eval "db.adminCommand('ping').ok" | grep -q 1; do
   sleep 3
